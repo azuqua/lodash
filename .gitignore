@@ -1,4 +1,6 @@
 .DS_Store
-*.log*
-doc/*.html
+*.custom.*
+*.log
+*.map
+lodash.compat.min.js
 node_modules
