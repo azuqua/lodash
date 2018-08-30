@@ -589,6 +589,34 @@
   }
 
   /**
+   * Gets the value at `key`, unless `key` is "__proto__".
+   *
+   * @private
+   * @param {Object} object The object to query.
+   * @param {string} key The key of the property to get.
+   * @returns {*} Returns the property value.
+   */
+  function safeGet(object, key) {
+    return key == '__proto__'
+      ? undefined
+      : object[key];
+  }
+
+  /**
+   * Sets the value at `key`, unless `key` is "__proto__".
+   *
+   * @private
+   * @param {Object} object The object to query.
+   * @param {string} key The key of the property to set.
+   * @param {*} value The value to set.
+   */
+  function safeSet(object, key, value) {
+    if(key != '__proto__') {
+      object[key] = value;
+    }
+  }
+
+  /**
    * An implementation of `_.uniq` optimized for sorted arrays without support
    * for callback shorthands and `this` binding.
    *
@@ -2104,7 +2132,7 @@
           length = path.length;
 
       while (object != null && index < length) {
-        object = object[path[index++]];
+        object = safeGet(object, path[index++]);
       }
       return (index && index == length) ? object : undefined;
     }
@@ -2358,15 +2386,16 @@
       arrayEach(props || source, function(srcValue, key) {
         if (props) {
           key = srcValue;
-          srcValue = source[key];
+          srcValue = safeGet(source, key);
         }
+
         if (isObjectLike(srcValue)) {
           stackA || (stackA = []);
           stackB || (stackB = []);
           baseMergeDeep(object, source, key, baseMerge, customizer, stackA, stackB);
         }
         else {
-          var value = object[key],
+          var value = safeGet(object, key),
               result = customizer ? customizer(value, srcValue, key, object, source) : undefined,
               isCommon = result === undefined;
 
@@ -2375,7 +2404,7 @@
           }
           if ((result !== undefined || (isSrcArr && !(key in object))) &&
               (isCommon || (result === result ? (result !== value) : (value === value)))) {
-            object[key] = result;
+            safeSet(object, key, result);
           }
         }
       });
@@ -2399,15 +2428,15 @@
      */
     function baseMergeDeep(object, source, key, mergeFunc, customizer, stackA, stackB) {
       var length = stackA.length,
-          srcValue = source[key];
+          srcValue = safeGet(source, key);
 
       while (length--) {
         if (stackA[length] == srcValue) {
-          object[key] = stackB[length];
+          safeSet(object, key, stackB[length]);
           return;
         }
       }
-      var value = object[key],
+      var value = safeGet(object, key),
           result = customizer ? customizer(value, srcValue, key, object, source) : undefined,
           isCommon = result === undefined;
 
@@ -2434,9 +2463,9 @@
 
       if (isCommon) {
         // Recursively merge objects and arrays (susceptible to call stack limits).
-        object[key] = mergeFunc(result, srcValue, customizer, stackA, stackB);
+        safeSet(object, key, mergeFunc(result, srcValue, customizer, stackA, stackB));
       } else if (result === result ? (result !== value) : (value === value)) {
-        object[key] = result;
+        safeSet(object, key, result);
       }
     }
 

@@ -1,6 +1,7 @@
 /**
  * @license
- * lodash 3.10.1 <https://lodash.com/>
+ * lodash 3.10.1 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern -o ./lodash.js`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
  * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -145,12 +146,6 @@
     'Object', 'RegExp', 'Set', 'String', '_', 'clearTimeout', 'isFinite',
     'parseFloat', 'parseInt', 'setTimeout', 'TypeError', 'Uint8Array',
     'Uint8ClampedArray', 'Uint16Array', 'Uint32Array', 'WeakMap'
-  ];
-
-  /** Used to fix the JScript `[[DontEnum]]` bug. */
-  var shadowProps = [
-    'constructor', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable',
-    'toLocaleString', 'toString', 'valueOf'
   ];
 
   /** Used to make template sourceURLs easier to identify. */
@@ -546,26 +541,6 @@
   }
 
   /**
-   * Checks if `value` is a host object in IE < 9.
-   *
-   * @private
-   * @param {*} value The value to check.
-   * @returns {boolean} Returns `true` if `value` is a host object, else `false`.
-   */
-  var isHostObject = (function() {
-    try {
-      Object({ 'toString': 0 } + '');
-    } catch(e) {
-      return function() { return false; };
-    }
-    return function(value) {
-      // IE < 9 presents many host objects as `Object` objects that can coerce
-      // to strings despite having improperly defined `toString` methods.
-      return typeof value.toString != 'function' && typeof (value + '') == 'string';
-    };
-  }());
-
-  /**
    * Checks if `value` is object-like.
    *
    * @private
@@ -611,6 +586,34 @@
       }
     }
     return result;
+  }
+
+  /**
+   * Gets the value at `key`, unless `key` is "__proto__".
+   *
+   * @private
+   * @param {Object} object The object to query.
+   * @param {string} key The key of the property to get.
+   * @returns {*} Returns the property value.
+   */
+  function safeGet(object, key) {
+    return key == '__proto__'
+      ? undefined
+      : object[key];
+  }
+
+  /**
+   * Sets the value at `key`, unless `key` is "__proto__".
+   *
+   * @private
+   * @param {Object} object The object to query.
+   * @param {string} key The key of the property to set.
+   * @param {*} value The value to set.
+   */
+  function safeSet(object, key, value) {
+    if(key != '__proto__') {
+      object[key] = value;
+    }
   }
 
   /**
@@ -741,7 +744,6 @@
 
     /** Used for native method references. */
     var arrayProto = Array.prototype,
-        errorProto = Error.prototype,
         objectProto = Object.prototype,
         stringProto = String.prototype;
 
@@ -814,34 +816,6 @@
 
     /** Used to lookup unminified function names. */
     var realNames = {};
-
-    /** Used to lookup a type array constructors by `toStringTag`. */
-    var ctorByTag = {};
-    ctorByTag[float32Tag] = context.Float32Array;
-    ctorByTag[float64Tag] = context.Float64Array;
-    ctorByTag[int8Tag] = context.Int8Array;
-    ctorByTag[int16Tag] = context.Int16Array;
-    ctorByTag[int32Tag] = context.Int32Array;
-    ctorByTag[uint8Tag] = Uint8Array;
-    ctorByTag[uint8ClampedTag] = context.Uint8ClampedArray;
-    ctorByTag[uint16Tag] = context.Uint16Array;
-    ctorByTag[uint32Tag] = context.Uint32Array;
-
-    /** Used to avoid iterating over non-enumerable properties in IE < 9. */
-    var nonEnumProps = {};
-    nonEnumProps[arrayTag] = nonEnumProps[dateTag] = nonEnumProps[numberTag] = { 'constructor': true, 'toLocaleString': true, 'toString': true, 'valueOf': true };
-    nonEnumProps[boolTag] = nonEnumProps[stringTag] = { 'constructor': true, 'toString': true, 'valueOf': true };
-    nonEnumProps[errorTag] = nonEnumProps[funcTag] = nonEnumProps[regexpTag] = { 'constructor': true, 'toString': true };
-    nonEnumProps[objectTag] = { 'constructor': true };
-
-    arrayEach(shadowProps, function(key) {
-      for (var tag in nonEnumProps) {
-        if (hasOwnProperty.call(nonEnumProps, tag)) {
-          var props = nonEnumProps[tag];
-          props[key] = hasOwnProperty.call(props, key);
-        }
-      }
-    });
 
     /*------------------------------------------------------------------------*/
 
@@ -984,83 +958,6 @@
      * @type Object
      */
     var support = lodash.support = {};
-
-    (function(x) {
-      var Ctor = function() { this.x = x; },
-          object = { '0': x, 'length': x },
-          props = [];
-
-      Ctor.prototype = { 'valueOf': x, 'y': x };
-      for (var key in new Ctor) { props.push(key); }
-
-      /**
-       * Detect if `name` or `message` properties of `Error.prototype` are
-       * enumerable by default (IE < 9, Safari < 5.1).
-       *
-       * @memberOf _.support
-       * @type boolean
-       */
-      support.enumErrorProps = propertyIsEnumerable.call(errorProto, 'message') ||
-        propertyIsEnumerable.call(errorProto, 'name');
-
-      /**
-       * Detect if `prototype` properties are enumerable by default.
-       *
-       * Firefox < 3.6, Opera > 9.50 - Opera < 11.60, and Safari < 5.1
-       * (if the prototype or a property on the prototype has been set)
-       * incorrectly set the `[[Enumerable]]` value of a function's `prototype`
-       * property to `true`.
-       *
-       * @memberOf _.support
-       * @type boolean
-       */
-      support.enumPrototypes = propertyIsEnumerable.call(Ctor, 'prototype');
-
-      /**
-       * Detect if properties shadowing those on `Object.prototype` are non-enumerable.
-       *
-       * In IE < 9 an object's own properties, shadowing non-enumerable ones,
-       * are made non-enumerable as well (a.k.a the JScript `[[DontEnum]]` bug).
-       *
-       * @memberOf _.support
-       * @type boolean
-       */
-      support.nonEnumShadows = !/valueOf/.test(props);
-
-      /**
-       * Detect if own properties are iterated after inherited properties (IE < 9).
-       *
-       * @memberOf _.support
-       * @type boolean
-       */
-      support.ownLast = props[0] != 'x';
-
-      /**
-       * Detect if `Array#shift` and `Array#splice` augment array-like objects
-       * correctly.
-       *
-       * Firefox < 10, compatibility modes of IE 8, and IE < 9 have buggy Array
-       * `shift()` and `splice()` functions that fail to remove the last element,
-       * `value[0]`, of array-like objects even though the "length" property is
-       * set to `0`. The `shift()` method is buggy in compatibility modes of IE 8,
-       * while `splice()` is buggy regardless of mode in IE < 9.
-       *
-       * @memberOf _.support
-       * @type boolean
-       */
-      support.spliceObjects = (splice.call(object, 0, 1), !object[0]);
-
-      /**
-       * Detect lack of support for accessing string characters by index.
-       *
-       * IE < 8 can't access characters by index. IE 8 can only access characters
-       * by index on string literals, not string objects.
-       *
-       * @memberOf _.support
-       * @type boolean
-       */
-      support.unindexedChars = ('x'[0] + Object('x')[0]) != 'xx';
-    }(1, 0));
 
     /**
      * By default, the template delimiters used by lodash are like those in
@@ -1836,9 +1733,6 @@
             isFunc = tag == funcTag;
 
         if (tag == objectTag || tag == argsTag || (isFunc && !object)) {
-          if (isHostObject(value)) {
-            return object ? value : {};
-          }
           result = initCloneObject(isFunc ? {} : value);
           if (!isDeep) {
             return baseAssign(result, value);
@@ -2231,15 +2125,14 @@
       if (object == null) {
         return;
       }
-      object = toObject(object);
-      if (pathKey !== undefined && pathKey in object) {
+      if (pathKey !== undefined && pathKey in toObject(object)) {
         path = [pathKey];
       }
       var index = 0,
           length = path.length;
 
       while (object != null && index < length) {
-        object = toObject(object)[path[index++]];
+        object = safeGet(object, path[index++]);
       }
       return (index && index == length) ? object : undefined;
     }
@@ -2304,8 +2197,8 @@
           othIsArr = isTypedArray(other);
         }
       }
-      var objIsObj = objTag == objectTag && !isHostObject(object),
-          othIsObj = othTag == objectTag && !isHostObject(other),
+      var objIsObj = objTag == objectTag,
+          othIsObj = othTag == objectTag,
           isSameTag = objTag == othTag;
 
       if (isSameTag && !(objIsArr || objIsObj)) {
@@ -2429,8 +2322,7 @@
           if (object == null) {
             return false;
           }
-          object = toObject(object);
-          return object[key] === value && (value !== undefined || (key in object));
+          return object[key] === value && (value !== undefined || (key in toObject(object)));
         };
       }
       return function(object) {
@@ -2494,15 +2386,16 @@
       arrayEach(props || source, function(srcValue, key) {
         if (props) {
           key = srcValue;
-          srcValue = source[key];
+          srcValue = safeGet(source, key);
         }
+
         if (isObjectLike(srcValue)) {
           stackA || (stackA = []);
           stackB || (stackB = []);
           baseMergeDeep(object, source, key, baseMerge, customizer, stackA, stackB);
         }
         else {
-          var value = object[key],
+          var value = safeGet(object, key),
               result = customizer ? customizer(value, srcValue, key, object, source) : undefined,
               isCommon = result === undefined;
 
@@ -2511,7 +2404,7 @@
           }
           if ((result !== undefined || (isSrcArr && !(key in object))) &&
               (isCommon || (result === result ? (result !== value) : (value === value)))) {
-            object[key] = result;
+            safeSet(object, key, result);
           }
         }
       });
@@ -2535,15 +2428,15 @@
      */
     function baseMergeDeep(object, source, key, mergeFunc, customizer, stackA, stackB) {
       var length = stackA.length,
-          srcValue = source[key];
+          srcValue = safeGet(source, key);
 
       while (length--) {
         if (stackA[length] == srcValue) {
-          object[key] = stackB[length];
+          safeSet(object, key, stackB[length]);
           return;
         }
       }
-      var value = object[key],
+      var value = safeGet(object, key),
           result = customizer ? customizer(value, srcValue, key, object, source) : undefined,
           isCommon = result === undefined;
 
@@ -2570,9 +2463,9 @@
 
       if (isCommon) {
         // Recursively merge objects and arrays (susceptible to call stack limits).
-        object[key] = mergeFunc(result, srcValue, customizer, stackA, stackB);
+        safeSet(object, key, mergeFunc(result, srcValue, customizer, stackA, stackB));
       } else if (result === result ? (result !== value) : (value === value)) {
-        object[key] = result;
+        safeSet(object, key, result);
       }
     }
 
@@ -2585,7 +2478,7 @@
      */
     function baseProperty(key) {
       return function(object) {
-        return object == null ? undefined : toObject(object)[key];
+        return object == null ? undefined : object[key];
       };
     }
 
@@ -4167,10 +4060,6 @@
         case float32Tag: case float64Tag:
         case int8Tag: case int16Tag: case int32Tag:
         case uint8Tag: case uint8ClampedTag: case uint16Tag: case uint32Tag:
-          // Safari 5 mobile incorrectly has `Object` as the constructor of typed arrays.
-          if (Ctor instanceof Ctor) {
-            Ctor = ctorByTag[tag];
-          }
           var buffer = object.buffer;
           return new Ctor(isDeep ? bufferClone(buffer) : buffer, object.byteOffset, object.length);
 
@@ -4513,7 +4402,7 @@
           length = propsLength && object.length;
 
       var allowIndexes = !!length && isLength(length) &&
-        (isArray(object) || isArguments(object) || isString(object));
+        (isArray(object) || isArguments(object));
 
       var index = -1,
           result = [];
@@ -4541,9 +4430,6 @@
       if (!isArrayLike(value)) {
         return values(value);
       }
-      if (lodash.support.unindexedChars && isString(value)) {
-        return value.split('');
-      }
       return isObject(value) ? value : Object(value);
     }
 
@@ -4555,16 +4441,6 @@
      * @returns {Object} Returns the object.
      */
     function toObject(value) {
-      if (lodash.support.unindexedChars && isString(value)) {
-        var index = -1,
-            length = value.length,
-            result = Object(value);
-
-        while (++index < length) {
-          result[index] = value.charAt(index);
-        }
-        return result;
-      }
       return isObject(value) ? value : Object(value);
     }
 
@@ -6301,9 +6177,6 @@
      * // => ['barney', 'pebbles']
      */
     var at = restParam(function(collection, props) {
-      if (isArrayLike(collection)) {
-        collection = toIterable(collection);
-      }
       return baseAt(collection, baseFlatten(props));
     });
 
@@ -8995,7 +8868,7 @@
       if (isFunction(value)) {
         return reIsNative.test(fnToString.call(value));
       }
-      return isObjectLike(value) && (isHostObject(value) ? reIsNative : reIsHostCtor).test(value);
+      return isObjectLike(value) && reIsHostCtor.test(value);
     }
 
     /**
@@ -9078,7 +8951,7 @@
       var Ctor;
 
       // Exit early for non `Object` objects.
-      if (!(isObjectLike(value) && objToString.call(value) == objectTag && !isHostObject(value) && !isArguments(value)) ||
+      if (!(isObjectLike(value) && objToString.call(value) == objectTag && !isArguments(value)) ||
           (!hasOwnProperty.call(value, 'constructor') && (Ctor = value.constructor, typeof Ctor == 'function' && !(Ctor instanceof Ctor)))) {
         return false;
       }
@@ -9086,13 +8959,6 @@
       // iterated property is an object's own property then there are no inherited
       // enumerable properties.
       var result;
-      if (lodash.support.ownLast) {
-        baseForIn(value, function(subValue, key, object) {
-          result = hasOwnProperty.call(object, key);
-          return false;
-        });
-        return result !== false;
-      }
       // In most environments an object's own properties are iterated before
       // its inherited properties. If the last iterated property is an object's
       // own property then there are no inherited enumerable properties.
@@ -9253,9 +9119,7 @@
       if (!length) {
         return [];
       }
-      return (lodash.support.unindexedChars && isString(value))
-        ? value.split('')
-        : arrayCopy(value);
+      return arrayCopy(value);
     }
 
     /**
@@ -9754,7 +9618,7 @@
         result = hasOwnProperty.call(object, path);
       }
       return result || (isLength(object.length) && isIndex(path, object.length) &&
-        (isArray(object) || isArguments(object) || isString(object)));
+        (isArray(object) || isArguments(object)));
     }
 
     /**
@@ -9837,7 +9701,7 @@
     var keys = !nativeKeys ? shimKeys : function(object) {
       var Ctor = object == null ? undefined : object.constructor;
       if ((typeof Ctor == 'function' && Ctor.prototype === object) ||
-          (typeof object == 'function' ? lodash.support.enumPrototypes : isArrayLike(object))) {
+          (typeof object != 'function' && isArrayLike(object))) {
         return shimKeys(object);
       }
       return isObject(object) ? nativeKeys(object) : [];
@@ -9872,51 +9736,23 @@
       if (!isObject(object)) {
         object = Object(object);
       }
-      var length = object.length,
-          support = lodash.support;
-
+      var length = object.length;
       length = (length && isLength(length) &&
-        (isArray(object) || isArguments(object) || isString(object)) && length) || 0;
+        (isArray(object) || isArguments(object)) && length) || 0;
 
       var Ctor = object.constructor,
           index = -1,
-          proto = (isFunction(Ctor) && Ctor.prototype) || objectProto,
-          isProto = proto === object,
+          isProto = typeof Ctor == 'function' && Ctor.prototype === object,
           result = Array(length),
-          skipIndexes = length > 0,
-          skipErrorProps = support.enumErrorProps && (object === errorProto || object instanceof Error),
-          skipProto = support.enumPrototypes && isFunction(object);
+          skipIndexes = length > 0;
 
       while (++index < length) {
         result[index] = (index + '');
       }
-      // lodash skips the `constructor` property when it infers it's iterating
-      // over a `prototype` object because IE < 9 can't set the `[[Enumerable]]`
-      // attribute of an existing property and the `constructor` property of a
-      // prototype defaults to non-enumerable.
       for (var key in object) {
-        if (!(skipProto && key == 'prototype') &&
-            !(skipErrorProps && (key == 'message' || key == 'name')) &&
-            !(skipIndexes && isIndex(key, length)) &&
+        if (!(skipIndexes && isIndex(key, length)) &&
             !(key == 'constructor' && (isProto || !hasOwnProperty.call(object, key)))) {
           result.push(key);
-        }
-      }
-      if (support.nonEnumShadows && object !== objectProto) {
-        var tag = object === stringProto ? stringTag : (object === errorProto ? errorTag : objToString.call(object)),
-            nonEnums = nonEnumProps[tag] || nonEnumProps[objectTag];
-
-        if (tag == objectTag) {
-          proto = objectProto;
-        }
-        length = shadowProps.length;
-        while (length--) {
-          key = shadowProps[length];
-          var nonEnum = nonEnums[key];
-          if (!(isProto && nonEnum) &&
-              (nonEnum ? hasOwnProperty.call(object, key) : object[key] !== proto[key])) {
-            result.push(key);
-          }
         }
       }
       return result;
@@ -10117,12 +9953,12 @@
      * // => 'default'
      */
     function result(object, path, defaultValue) {
-      var result = object == null ? undefined : toObject(object)[path];
+      var result = object == null ? undefined : object[path];
       if (result === undefined) {
         if (object != null && !isKey(path, object)) {
           path = toPath(path);
           object = path.length == 1 ? object : baseGet(object, baseSlice(path, 0, -1));
-          result = object == null ? undefined : toObject(object)[last(path)];
+          result = object == null ? undefined : object[last(path)];
         }
         result = result === undefined ? defaultValue : result;
       }
@@ -12457,20 +12293,9 @@
 
     // Add `Array` and `String` methods to `lodash.prototype`.
     arrayEach(['join', 'pop', 'push', 'replace', 'shift', 'sort', 'splice', 'split', 'unshift'], function(methodName) {
-      var protoFunc = (/^(?:replace|split)$/.test(methodName) ? stringProto : arrayProto)[methodName],
+      var func = (/^(?:replace|split)$/.test(methodName) ? stringProto : arrayProto)[methodName],
           chainName = /^(?:push|sort|unshift)$/.test(methodName) ? 'tap' : 'thru',
-          fixObjects = !support.spliceObjects && /^(?:pop|shift|splice)$/.test(methodName),
           retUnwrapped = /^(?:join|pop|replace|shift)$/.test(methodName);
-
-      // Avoid array-like object bugs with `Array#shift` and `Array#splice` in
-      // IE < 9, Firefox < 10, and RingoJS.
-      var func = !fixObjects ? protoFunc : function() {
-        var result = protoFunc.apply(this, arguments);
-        if (this.length === 0) {
-          delete this[0];
-        }
-        return result;
-      };
 
       lodash.prototype[methodName] = function() {
         var args = arguments;

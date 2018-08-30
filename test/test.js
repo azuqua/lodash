@@ -7623,6 +7623,17 @@
       strictEqual(_.isEqual(array1, array2), false);
     });
 
+    test('should not merge "__proto__" properties', function(assert) {
+      assert.expect(1);
+
+       if (JSON) {
+        _.merge({}, JSON.parse('{"__proto__":{"a":1}}'));
+        var actual = "a" in objectProto;
+        delete objectProto.a;
+        assert.notOk(actual);
+      }
+    });
+
     test('should perform comparisons between objects with complex circular references', 1, function() {
       var object1 = {
         'foo': { 'b': { 'c': { 'd': {} } } },
