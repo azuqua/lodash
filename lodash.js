@@ -597,7 +597,7 @@
    * @returns {*} Returns the property value.
    */
   function safeGet(object, key) {
-    return key == '__proto__'
+    return key == '__proto__' || key == "constructor"
       ? undefined
       : object[key];
   }
@@ -611,7 +611,7 @@
    * @param {*} value The value to set.
    */
   function safeSet(object, key, value) {
-    if(key != '__proto__') {
+    if(key != '__proto__' && key != "constructor") {
       object[key] = value;
     }
   }
