@@ -27,8 +27,8 @@ import toPlainObject from '../toPlainObject.js'
  *  counterparts.
  */
 function baseMergeDeep(object, source, key, srcIndex, mergeFunc, customizer, stack) {
-  const objValue = object[key]
-  const srcValue = source[key]
+  const objValue = safeGet(object, key)
+  const srcValue = safeGet(source, key)
   const stacked = stack.get(srcValue)
 
   if (stacked) {
